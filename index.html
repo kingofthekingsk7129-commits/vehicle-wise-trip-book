@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#102b4e">
+<title>Vehicle Wise Trip Book</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f1f5f9;color:#172b45;font-family:Arial,sans-serif}
+header{background:#102b4e;color:white;padding:22px 16px;text-align:center}
+header h2{margin:0;font-size:22px}
+header p{margin:7px 0 0;font-size:13px;color:#dbeafe}
+main{max-width:850px;margin:auto;padding:14px}
+.card{background:white;padding:16px;border-radius:13px;margin-bottom:14px;box-shadow:0 2px 9px #0000000c}
+h3{margin:0 0 14px;color:#163b63}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#eaf2fb;padding:14px;border-radius:10px}
+.stat small{color:#52657a}
+.stat b{display:block;font-size:21px;margin-top:6px}
+label{display:block;font-size:13px;font-weight:bold;margin:12px 0 5px}
+input,select{width:100%;padding:12px;border:1px solid #ccd5df;border-radius:8px;font-size:15px;background:white}
+button{border:0;border-radius:8px;padding:12px 15px;background:#1459a5;color:white;font-weight:bold;font-size:14px;cursor:pointer}
+button.secondary{background:#52657a}
+button.danger{background:#b42318}
+button.green{background:#16834a}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.vehicle{border:1px solid #dbe3ec;padding:13px;border-radius:10px;margin:9px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vehicle button{padding:8px}
+.trip{border-left:4px solid #2773bb;background:#f7faff;padding:12px;margin:10px 0;border-radius:7px;font-size:14px}
+.trip p{margin:6px 0}
+.muted{color:#65758a;font-size:12px}
+.hidden{display:none}
+@media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header>
+<h2>🚚 VEHICLE WISE TRIP BOOK</h2>
+<p>SRI NANDHI CARGO MOVERS</p>
+</header>
+<main>
+<div class="card">
+<h3>📊 Dashboard</h3>
+<div class="stats">
+<div class="stat"><small>Total Vehicles</small><b id="vehicleCount">0</b></div>
+<div class="stat"><small>Total Trips</small><b id="tripCount">0</b></div>
+<div class="stat"><small>Total Rent</small><b id="totalRent">₹0</b></div>
+<div class="stat"><small>Net Profit</small><b id="totalProfit">₹0</b></div>
+</div>
+</div>
+
+<div class="card">
+<h3>🚛 Add New Vehicle</h3>
+<label>Vehicle Number</label>
+<input id="newVehicle" placeholder="Example: TN 39 AB 4975">
+<div class="actions"><button onclick="addVehicle()">+ Add Vehicle</button></div>
+</div>
+
+<div class="card">
+<h3>🚛 Vehicle List</h3>
+<div id="vehicleList"></div>
+</div>
+
+<div class="card">
+<h3>➕ Add Daily Trip</h3>
+<label>Select Vehicle</label>
+<select id="vehicleSelect"><option value="">Select Vehicle</option></select>
+<label>Date</label>
+<input type="date" id="date">
+<label>Serial Number</label>
+<input id="serial" readonly placeholder="Automatic">
+<label>Trip Number</label>
+<input id="tripNo" placeholder="Enter trip number">
+<label>Driver Name</label>
+<input id="driver" placeholder="Driver name">
+<label>From</label>
+<input id="from" placeholder="Starting place">
+<label>To</label>
+<input id="to" placeholder="Destination">
+<label>Rent Amount (₹)</label>
+<input type="number" id="rent" min="0" value="0">
+<label>Diesel Amount (₹)</label>
+<input type="number" id="diesel" min="0" value="0">
+<label>Toll Amount (₹)</label>
+<input type="number" id="toll" min="0" value="0">
+<label>Other Expenses (₹)</label>
+<input type="number" id="other" min="0" value="0">
+<label>Driver Salary (₹)</label>
+<input type="number" id="salary" min="0" value="0">
+<label>Driver Advance (₹)</label>
+<input type="number" id="advance" min="0" value="0">
+<p class="muted">Net Profit = Rent − Diesel − Toll − Other Expenses − Salary − Advance</p>
+<div class="actions">
+<button class="green" onclick="saveTrip()">💾 Save Trip</button>
+<button class="secondary" onclick="clearForm()">Clear</button>
+</div>
+</div>
+
+<div class="card">
+<h3>🔎 Search Vehicle History</h3>
+<input id="search" placeholder="Enter vehicle number..." oninput="showHistory()">
+<div id="history"></div>
+</div>
+
+<div class="card">
+<h3>📄 Reports & Backup</h3>
+<div class="actions">
+<button onclick="printReport()">Download / Print PDF</button>
+<button class="secondary" onclick="backupData()">Backup JSON</button>
+<button class="secondary" onclick="document.getElementById('restoreFile').click()">Restore Backup</button>
+<input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreData(event)">
+</div>
+<p class="muted">PDF பெற Print தேர்வு செய்து Save as PDF என்பதைத் தேர்வு செய்யுங்கள்.</p>
+</div>
+</main>
+
+<script>
+const KEY='sri_nandhi_vehicle_trip_book_v1';
+let data={vehicles:[],trips:[]};
+try{const saved=localStorage.getItem(KEY);if(saved)data=JSON.parse(saved)}catch(e){alert('Saved data could not be read')}
+function saveData(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function clean(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function addVehicle(){
+ const v=document.getElementById('newVehicle').value.trim().toUpperCase();
+ if(!v)return alert('Enter vehicle number');
+ if(data.vehicles.includes(v))return alert('Vehicle already exists');
+ data.vehicles.push(v);document.getElementById('newVehicle').value='';saveData();
+}
+function selectChanged(){
+ const v=document.getElementById('vehicleSelect').value;
+ const count=data.trips.filter(t=>t.vehicle===v).length;
+ document.getElementById('serial').value=v?String(count+1):'';
+}
+function saveTrip(){
+ const vehicle=document.getElementById('vehicleSelect').value;
+ if(!vehicle)return alert('Please add and select a vehicle');
+ const date=document.getElementById('date').value;
+ const driver=document.getElementById('driver').value.trim();
+ const from=document.getElementById('from').value.trim();
+ const to=document.getElementById('to').value.trim();
+ if(!date||!driver||!from||!to)return alert('Enter date, driver, From and To');
+ const num=id=>Math.max(0,Number(document.getElementById(id).value)||0);
+ const rent=num('rent'),diesel=num('diesel'),toll=num('toll'),other=num('other'),salary=num('salary'),advance=num('advance');
+ const trip={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),vehicle,date,serial:data.trips.filter(t=>t.vehicle===vehicle).length+1,tripNo:document.getElementById('tripNo').value.trim(),driver,from,to,rent,diesel,toll,other,salary,advance,profit:rent-diesel-toll-other-salary-advance};
+ data.trips.push(trip);saveData();clearForm();alert('Trip saved successfully');
+}
+function clearForm(){
+ ['tripNo','driver','from','to'].forEach(id=>document.getElementById(id).value='');
+ ['rent','diesel','toll','other','salary','advance'].forEach(id=>document.getElementById(id).value='0');
+ document.getElementById('date').value=new Date().toISOString().slice(0,10);
+ selectChanged();
+}
+function render(){
+ document.getElementById('vehicleCount').textContent=data.vehicles.length;
+ document.getElementById('tripCount').textContent=data.trips.length;
+ document.getElementById('totalRent').textContent=money(data.trips.reduce((s,t)=>s+Number(t.rent),0));
+ document.getElementById('totalProfit').textContent=money(data.trips.reduce((s,t)=>s+Number(t.profit),0));
+ const sel=document.getElementById('vehicleSelect'),old=sel.value;
+ sel.innerHTML='<option value="">Select Vehicle</option>'+data.vehicles.map(v=>'<option value="'+clean(v)+'">'+clean(v)+'</option>').join('');
+ if(data.vehicles.includes(old))sel.value=old;
+ sel.onchange=selectChanged;
+ document.getElementById('vehicleList').innerHTML=data.vehicles.length?data.vehicles.map(v=>{
+ const n=data.trips.filter(t=>t.vehicle===v).length;
+ return '<div class="vehicle"><div><b>'+clean(v)+'</b><div class="muted">'+n+' Trips</div></div><button onclick="pickVehicle(\''+clean(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">Open</button></div>';
+ }).join(''):'<p class="muted">No vehicles added yet.</p>';
+ showHistory();selectChanged();
+}
+function pickVehicle(v){document.getElementById('search').value=v;showHistory();document.getElementById('search').scrollIntoView({behavior:'smooth'})}
+function showHistory(){
+ const q=document.getElementById('search').value.trim().toUpperCase();
+ const list=data.trips.filter(t=>!q||t.vehicle.toUpperCase().includes(q)).sort((a,b)=>b.date.localeCompare(a.date)||b.serial-a.serial);
+ document.getElementById('history').innerHTML=list.length?list.map(t=>'<div class="trip"><b>'+clean(t.vehicle)+' — Trip '+clean(t.tripNo||t.serial)+'</b><p>'+clean(t.date)+' | '+clean(t.driver)+'</p><p>'+clean(t.from)+' → '+clean(t.to)+'</p><p>Rent: '+money(t.rent)+' | Diesel: '+money(t.diesel)+' | Toll: '+money(t.toll)+'</p><p>Other: '+money(t.other)+' | Salary: '+money(t.salary)+' | Advance: '+money(t.advance)+'</p><b>Net Profit: '+money(t.profit)+'</b><div class="actions"><button class="secondary" onclick="editTrip(\''+t.id+'\')">Edit</button><button class="danger" onclick="deleteTrip(\''+t.id+'\')">Delete</button></div></div>').join(''):'<p class="muted">No trip records found.</p>';
+}
+function editTrip(id){
+ const t=data.trips.find(x=>x.id===id);if(!t)return;
+ if(!confirm('Edit this trip?'))return;
+ document.getElementById('vehicleSelect').value=t.vehicle;selectChanged();
+ const fields={date:t.date,tripNo:t.tripNo,driver:t.driver,from:t.from,to:t.to,rent:t.rent,diesel:t.diesel,toll:t.toll,other:t.other,salary:t.salary,advance:t.advance};
+ Object.keys(fields).forEach(k=>document.getElementById(k).value=fields[k]);
+ data.trips=data.trips.filter(x=>x.id!==id);saveData();
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function deleteTrip(id){
+ if(!confirm('Delete this trip permanently from this device?'))return;
+ data.trips=data.trips.filter(t=>t.id!==id);saveData();
+}
+function printReport(){
+ const q=document.getElementById('search').value.trim().toUpperCase();
+ const list=data.trips.filter(t=>!q||t.vehicle.toUpperCase().includes(q)).sort((a,b)=>a.date.localeCompare(b.date));
+ if(!list.length)return alert('No trips to print');
+ const total=list.reduce((s,t)=>s+t.rent,0),profit=list.reduce((s,t)=>s+t.profit,0);
+ const rows=list.map(t=>'<tr><td>'+clean(t.date)+'</td><td>'+clean(t.vehicle)+'</td><td>'+clean(t.serial)+'</td><td>'+clean(t.driver)+'</td><td>'+clean(t.from)+' - '+clean(t.to)+'</td><td>'+money(t.rent)+'</td><td>'+money(t.diesel)+'</td><td>'+money(t.toll)+'</td><td>'+money(t.other)+'</td><td>'+money(t.salary)+'</td><td>'+money(t.advance)+'</td><td>'+money(t.profit)+'</td></tr>').join('');
+ const w=window.open('','_blank');if(!w)return alert('Allow popups to print PDF');
+ w.document.write('<html><head><title>Trip Report</title><style>body{font-family:Arial;padding:20px}h2{text-align:center}table{border-collapse:collapse;width:100%;font-size:10px}th,td{border:1px solid #888;padding:5px;text-align:left}th{background:#e8eef5}@media print{@page{size:landscape}}</style></head><body><h2>VEHICLE WISE TRIP BOOK</h2><h3>SRI NANDHI CARGO MOVERS</h3><p>Vehicle Search: '+clean(q||'All Vehicles')+'</p><p>Total Trips: '+list.length+' | Total Rent: '+money(total)+' | Net Profit: '+money(profit)+'</p><table><tr><th>Date</th><th>Vehicle</th><th>Serial</th><th>Driver</th><th>Route</th><th>Rent</th><th>Diesel</th><th>Toll</th><th>Other</th><th>Salary</th><th>Advance</th><th>Profit</th></tr>'+rows+'</table><script>window.onload=()=>window.print()<\/script></body></html>');
+ w.document.close();
+}
+function backupData(){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sri-nandhi-trip-backup.json';a.click();URL.revokeObjectURL(a.href);
+}
+function restoreData(e){
+ const f=e.target.files[0];if(!f)return;
+ const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.vehicles)||!Array.isArray(d.trips))throw Error();if(!confirm('Replace current data with this backup?'))return;data=d;saveData();alert('Backup restored')}catch(err){alert('Invalid backup file')}};r.readAsText(f);e.target.value='';
+}
+document.getElementById('date').value=new Date().toISOString().slice(0,10);
+render();
+</script>
+</body>
+</html>
