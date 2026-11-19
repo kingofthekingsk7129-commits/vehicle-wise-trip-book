@@ -205,7 +205,14 @@ function restoreData(e){
  const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.vehicles)||!Array.isArray(d.trips))throw Error();if(!confirm('Replace current data with this backup?'))return;data=d;saveData();alert('Backup restored')}catch(err){alert('Invalid backup file')}};r.readAsText(f);e.target.value='';
 }
 document.getElementById('date').value=new Date().toISOString().slice(0,10);
-render();
+render();const firebaseConfig = {
+  apiKey: "AIzaSyCK9HtCPl8D-hNMrhgsVioBCKcdI-3RWBE",
+  authDomain: "sri-nandhi-trip-book.firebaseapp.com",
+  projectId: "sri-nandhi-trip-book",
+  storageBucket: "sri-nandhi-trip-book.firebasestorage.app",
+  messagingSenderId: "936453582782",
+  appId: "1:936453582782:web:65779ebaa06d36869bd3ef"
+};
 </script>
 </body>
 </html>
